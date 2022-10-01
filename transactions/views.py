@@ -44,26 +44,45 @@ def getTransactionByID(request, transaction_id):
 
 @api_view(['GET'])
 def transactionSummaryByProducts(request, last_n_days):
-    transactions_df, products_df = get_last_n_days_transaction(last_n_days)
+    try:
+        # getting list of transactions for last n days and list products for reference
+        transactions_df, products_df = get_last_n_days_transaction(last_n_days)
 
-    transactions_df = transactions_df.drop_duplicates().groupby('productId',sort=False,as_index=False).agg(totalAmount=('transactionAmount', 'sum'))
-    
-    mergedDF = pd.merge(transactions_df, products_df, left_on='productId', right_on='productId', how='left').drop(['productId', 'productManufacturingCity'], axis=1)
+        # aggregating the list of trasactions by dropping the duplicates by productsId and getting the transactionAmount summed
+        transactions_df = transactions_df.drop_duplicates().groupby('productId',sort=False,as_index=False).agg(totalAmount=('transactionAmount', 'sum'))
+        
+        # merging the transactions df and products df based on productId and dropping the unnecessary columns
+        mergedDF = pd.merge(transactions_df, products_df, left_on='productId', right_on='productId', how='left').drop(['productId', 'productManufacturingCity'], axis=1)
 
-    body = { "summary": mergedDF.to_dict(orient='records') }
-    return Response(body)
+        # converting the dataframe to dictionry based key value pairs
+        body = { "summary": mergedDF.to_dict(orient='records') }
+        statuscode=status.HTTP_200_OK
+    except Exception as e:
+        body = { 'message': 'Something went wrong, Plesae try again!' }
+        statuscode = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    return Response(body, status=statuscode)
 
 @api_view(['GET'])
 def transactionSummaryByManufacturingCity(request, last_n_days):
-    transactions_df, products_df = get_last_n_days_transaction(last_n_days)
-   
-    mergedDF = pd.merge(transactions_df, products_df, left_on='productId', right_on='productId', how='left')
+    try:
+        # getting list of transactions for last n days and list products for reference
+        transactions_df, products_df = get_last_n_days_transaction(last_n_days)
 
-    mergedDF = mergedDF.drop_duplicates().groupby('productManufacturingCity',sort=False,as_index=False).agg(totalAmount=('transactionAmount', 'sum'))
-    
-    body = { "summary": mergedDF.to_dict(orient='records')}
-    return Response(body)
+        # merging the transactions df and products df based on productId
+        mergedDF = pd.merge(transactions_df, products_df, left_on='productId', right_on='productId', how='left')
 
+        # aggregating the merged datafame by dropping duplicates by productManufacturingCity and getting the transactionsAmount summed for each productManufacturingCity
+        mergedDF = mergedDF.drop_duplicates().groupby('productManufacturingCity',sort=False,as_index=False).agg(totalAmount=('transactionAmount', 'sum'))
+        
+        # converting the dataframe to dictionry based key value pairs
+        body = { "summary": mergedDF.to_dict(orient='records')}
+        statuscode=status.HTTP_200_OK
+    except Exception as e:
+        body = { 'message': 'Something went wrong, Plesae try again!' }
+        statuscode = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    return Response(body, status=statuscode)
 
 
 
